@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="si" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>නාවගත්තේගම - අනුරාධපුර - ත්‍රිකුණාමලය | 2-Day Family Tour</title>
+  <meta name="description" content="A 2-Day Family Tour Web App from Nawagattegama to Anuradhapura and Trincomalee, Sri Lanka. Interactive Leaflet map, countdown timer, proximity alerts, and itinerary planner." />
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ocean: {
+              50: '#f0f9ff',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              900: '#0c4a6e',
+              950: '#081325'
+            },
+            srilanka: {
+              gold: '#f59e0b',
+              palm: '#10b981',
+              coral: '#f43f5e',
+              sapphire: '#2563eb'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Leaflet.js CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="bg-ocean-950 text-slate-100 min-h-screen selection:bg-ocean-600 selection:text-white pb-16">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm pointer-events-none"></div>
+
+  <!-- Top Glass Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-ocean-950/85 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-8 py-3.5 transition-all">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-ocean-600 to-amber-500 flex items-center justify-center shadow-lg shadow-ocean-600/30">
+          <span class="text-xl">🌴</span>
+        </div>
+        <div>
+          <span class="text-[11px] uppercase tracking-wider font-extrabold text-amber-400">Sri Lanka Family Tour</span>
+          <h1 class="text-base sm:text-lg font-bold text-white tracking-tight leading-none">නාවගත්තේගම ➔ ත්‍රිකුණාමලය</h1>
+        </div>
+      </div>
+
+      <!-- Quick Nav Links -->
+      <nav class="hidden lg:flex items-center gap-6 text-xs sm:text-sm font-semibold text-slate-300">
+        <a href="#countdown-section" class="hover:text-ocean-400 transition-colors">Countdown</a>
+        <a href="#schedule-section" class="hover:text-ocean-400 transition-colors">සම්පූර්ණ සැලැස්ම</a>
+        <a href="#map-section" class="hover:text-ocean-400 transition-colors">Route Map</a>
+        <a href="#itinerary-section" class="hover:text-ocean-400 transition-colors">ස්ථාන විස්තර</a>
+        <a href="#expense-section" class="hover:text-ocean-400 transition-colors">වියදම් සටහන</a>
+        <a href="#checklist-section" class="hover:text-ocean-400 transition-colors">බඩු ලැයිස්තුව</a>
+      </nav>
+
+      <div class="flex items-center gap-2">
+        <button onclick="window.tourApp.triggerConfetti()" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-md shadow-amber-500/25 transition transform active:scale-95 flex items-center gap-1.5 cursor-pointer">
+          <span>🎉 Start Tour</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO SECTION WITH OCEAN WAVES & COUNTDOWN -->
+  <section id="countdown-section" class="relative pt-10 pb-24 px-4 sm:px-6 overflow-hidden bg-gradient-to-b from-ocean-950 via-slate-900 to-ocean-950">
+    <!-- Ambient Glow Circles -->
+    <div class="absolute top-10 left-1/4 w-96 h-96 bg-ocean-600/15 rounded-full blur-3xl pointer-events-none animate-pulse-glow"></div>
+    <div class="absolute top-20 right-1/4 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="max-w-5xl mx-auto relative z-10 text-center">
+      
+      <!-- Sinhala & English Header Badges -->
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-ocean-600/20 text-ocean-400 border border-ocean-500/30 mb-5">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        <span>2026 ඔක්තෝබර් 16 - 17 • දෙදින පවුලේ නිවාඩු චාරිකාව</span>
+      </div>
+
+      <h2 class="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-4">
+        නාවගත්තේගම සිට අනුරාධපුරය සහ <br class="hidden sm:inline" />
+        <span class="text-gradient-ocean">ත්‍රිකුණාමලය</span> දෙදින චාරිකා සැලැස්ම
+      </h2>
+      <p class="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto mb-8 font-light leading-relaxed">
+        රුවන්වැලි සෑය, ශ්‍රී මහා බෝධිය, කොණේස්වරම් කෝවිල, නිලාවේලි වෙරළ, කන්නියා උණුදිය ළිං සහ සුන්දර මාබල් බීච් වෙරළ තීරය දක්වා පවුලේ සැමට අමතක නොවන සුපිරි සංචාරයක්!
+      </p>
+
+      <!-- COUNTDOWN TIMER CARD -->
+      <div class="max-w-3xl mx-auto glass-panel rounded-3xl p-6 sm:p-8 border border-ocean-500/25 mb-8">
+        <div class="flex flex-col sm:flex-row items-center justify-between pb-6 mb-6 border-b border-slate-800 gap-3">
+          <div class="flex items-center gap-2.5">
+            <span class="text-2xl">⏳</span>
+            <div class="text-left">
+              <span class="text-[11px] uppercase tracking-wider font-bold text-slate-400">ගමන ආරම්භ වන වේලාව</span>
+              <p class="text-sm sm:text-base font-bold text-amber-400">2026 ඔක්තෝබර් 16 • අලුයම 04:30 AM (Asia/Colombo)</p>
+            </div>
+          </div>
+          <div id="tour-status-badge" class="px-3.5 py-1 rounded-full text-xs font-semibold bg-ocean-500/20 text-ocean-300 border border-ocean-400/30">
+            ⏰ ගමනට තව:
+          </div>
+        </div>
+
+        <!-- Timer Digits Grid -->
+        <div class="grid grid-cols-4 gap-2.5 sm:gap-6 text-center">
+          <div class="bg-slate-900/80 rounded-2xl p-3 sm:p-5 border border-slate-800/80 shadow-inner">
+            <span id="count-days" class="text-3xl sm:text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-300 block">--</span>
+            <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-ocean-400 mt-1 block">දින (Days)</span>
+          </div>
+          <div class="bg-slate-900/80 rounded-2xl p-3 sm:p-5 border border-slate-800/80 shadow-inner">
+            <span id="count-hours" class="text-3xl sm:text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-300 to-amber-500 block">--</span>
+            <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-400 mt-1 block">පැය (Hours)</span>
+          </div>
+          <div class="bg-slate-900/80 rounded-2xl p-3 sm:p-5 border border-slate-800/80 shadow-inner">
+            <span id="count-mins" class="text-3xl sm:text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-emerald-300 to-emerald-500 block">--</span>
+            <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-400 mt-1 block">මිනිත්තු (Mins)</span>
+          </div>
+          <div class="bg-slate-900/80 rounded-2xl p-3 sm:p-5 border border-slate-800/80 shadow-inner">
+            <span id="count-secs" class="text-3xl sm:text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-sky-300 to-sky-500 block">--</span>
+            <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-sky-400 mt-1 block">තත්පර (Secs)</span>
+          </div>
+        </div>
+
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <button onclick="window.tourApp.triggerConfetti()" class="px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-ocean-500 to-blue-600 hover:from-ocean-400 hover:to-blue-500 text-white shadow-lg shadow-ocean-600/30 transition transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 cursor-pointer">
+            <span>🎉 Tour Started! (Confetti Blast)</span>
+          </button>
+          <a href="#schedule-section" class="px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-2">
+            <span>📋 සවිස්තරාත්මක කාලසටහන බලන්න</span>
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Animated Waves at bottom of Hero -->
+    <div class="wave-container">
+      <svg class="wave-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto">
+        <defs>
+          <path id="gentle-wave" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
+        </defs>
+        <g class="wave-layer-1">
+          <use href="#gentle-wave" x="48" y="0" />
+        </g>
+        <g class="wave-layer-2">
+          <use href="#gentle-wave" x="48" y="3" />
+        </g>
+        <g class="wave-layer-3">
+          <use href="#gentle-wave" x="48" y="5" />
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <!-- SECTION: DEDICATED 2-DAY FULL TOUR PLAN (USER'S EXACT SCHEDULE) -->
+  <section id="schedule-section" class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+    <div class="text-center max-w-3xl mx-auto mb-10">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 mb-2.5">
+        <span>🗓️ නිල සංචාරක කාලසටහන</span>
+      </div>
+      <h2 class="text-2xl sm:text-4xl font-extrabold text-white">පූර්ණ 2-දින සංචාරක සැලැස්ම (Detailed Tour Plan)</h2>
+      <p class="text-xs sm:text-sm text-slate-400 mt-2">
+        පියවරෙන් පියවර නිවැරදි වේලාවන්, නැවතුම් ස්ථාන සහ වැදගත් උපදෙස් සමඟින්
+      </p>
+    </div>
+
+    <!-- 2 Days Side-by-Side Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      
+      <!-- DAY 1 COLUMN -->
+      <div class="glass-panel rounded-3xl p-6 sm:p-7 border border-ocean-600/30 relative overflow-hidden flex flex-col justify-between">
+        <div class="absolute top-0 right-0 w-44 h-44 bg-ocean-600/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div>
+          <div class="flex items-center gap-3 pb-4 mb-6 border-b border-slate-800">
+            <span class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-ocean-500 to-blue-600 flex items-center justify-center text-white font-extrabold text-lg shadow-lg shadow-ocean-600/30">
+              1
+            </span>
+            <div>
+              <span class="text-[11px] uppercase font-bold text-ocean-400">2026 ඔක්තෝබර් 16 (සිකුරාදා)</span>
+              <h3 class="font-extrabold text-base sm:text-lg text-white">අනුරාධපුරය වැඳපුදාගෙන ත්‍රිකුණාමලයට යාම</h3>
+            </div>
+          </div>
+
+          <!-- Day 1 Dynamic Timeline List -->
+          <div id="timeline-day-1" class="space-y-1">
+            <!-- Populated dynamically by app.js -->
+          </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+          <span class="flex items-center gap-1.5 text-ocean-400 font-semibold">
+            <span>🌙 රාත්‍රී නවාතැන: ත්‍රිකුණාමලය හෝටලය</span>
+          </span>
+          <span class="text-slate-500">Day 1 Complete</span>
+        </div>
+      </div>
+
+      <!-- DAY 2 COLUMN -->
+      <div class="glass-panel rounded-3xl p-6 sm:p-7 border border-amber-500/30 relative overflow-hidden flex flex-col justify-between">
+        <div class="absolute top-0 right-0 w-44 h-44 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div>
+          <div class="flex items-center gap-3 pb-4 mb-6 border-b border-slate-800">
+            <span class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-slate-950 font-extrabold text-lg shadow-lg shadow-amber-500/30">
+              2
+            </span>
+            <div>
+              <span class="text-[11px] uppercase font-bold text-amber-400">2026 ඔක්තෝබර් 17 (සෙනසුරාදා)</span>
+              <h3 class="font-extrabold text-base sm:text-lg text-white">මාබල් බීච්, උණු දිය උල්පත් සහ නැවත ගෙදර පැමිණීම</h3>
+            </div>
+          </div>
+
+          <!-- Day 2 Dynamic Timeline List -->
+          <div id="timeline-day-2" class="space-y-1">
+            <!-- Populated dynamically by app.js -->
+          </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+          <span class="flex items-center gap-1.5 text-emerald-400 font-semibold">
+            <span>🏡 ගමනාන්තය: නාවගත්තේගම නිවස</span>
+          </span>
+          <span class="text-slate-500">Day 2 Complete</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- INTERACTIVE MAP & LOCATION MANAGER SECTION -->
+  <section id="map-section" class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+    <div class="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold bg-ocean-500/20 text-ocean-400 border border-ocean-500/30 mb-2">
+          <span>🗺️ Leaflet.js Interactive Navigation</span>
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">සජීවී මාර්ග සිතියම සහ නැවතුම් කළමනාකරණය</h2>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">
+          නාවගත්තේගම ➔ අනුරාධපුරය ➔ ත්‍රිකුණාමලය ➔ කෝනේශ්වරම් ➔ නිලාවේලි ➔ කන්නියා ➔ මාබල් බීච් ➔ ආපසු නාවගත්තේගමට සම්බන්ධ වන මාර්ගය.
+        </p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <button id="btn-open-add-stop" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 transition flex items-center gap-1.5 cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          <span>Add Custom Stop</span>
+        </button>
+        <button onclick="window.tourApp.fitMapBounds()" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5 cursor-pointer">
+          <span>🔍 Zoom to All</span>
+        </button>
+        <button onclick="window.tourApp.resetToDefault()" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800/80 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-slate-700 transition cursor-pointer" title="Reset Default Stops">
+          <span>🔄 Reset Plan</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Map & Manager Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Leaflet Map Container -->
+      <div class="lg:col-span-2 glass-panel rounded-3xl p-3 border border-slate-800 relative overflow-hidden shadow-2xl">
+        <div id="map" class="h-[460px] sm:h-[530px] rounded-2xl z-10"></div>
+        <div class="absolute bottom-6 left-6 z-20 pointer-events-none hidden sm:block">
+          <div class="bg-slate-950/85 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-800 text-xs text-slate-300 shadow-xl flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-sky-400 animate-ping"></span>
+            <span>Sequential Route Polyline Active</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Location Manager Quick List -->
+      <div class="glass-panel rounded-3xl p-5 border border-slate-800 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+            <div>
+              <h3 class="font-bold text-base text-white">ගමන් නැවතුම් ලැයිස්තුව</h3>
+              <p class="text-[11px] text-slate-400">Stops sequenced in order</p>
+            </div>
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30">
+              Live Map
+            </span>
+          </div>
+
+          <div id="location-manager-list" class="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+            <!-- Populated dynamically by app.js -->
+          </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+          <span>💡 "Test Alert" ඔබා ආසන්නතා දැනුම්දීම බලන්න</span>
+          <span class="text-amber-400">Synced</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ITINERARY TIMELINE & DETAIL CARDS WITH AUTHENTIC PHOTOS -->
+  <section id="itinerary-section" class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 mb-2">
+          <span>📸 Authentic Destinations</span>
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white">ස්ථානීය ඡායාරූප සහ සංචාරක විස්තර</h2>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">
+          ශ්‍රී ලංකාවේ සැබෑ ඓතිහාසික සහ වෙරළබඩ සුන්දරත්වය විඳින්න
+        </p>
+      </div>
+
+      <!-- Day Tabs -->
+      <div class="flex items-center gap-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800">
+        <button id="tab-day-1" onclick="window.tourApp.switchDayTab(1)" class="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-ocean-600 to-blue-600 text-white shadow-lg shadow-ocean-600/25 transition cursor-pointer">
+          Day 1 (Oct 16) • අනුරාධපුරය & ත්‍රිකුණාමලය
+        </button>
+        <button id="tab-day-2" onclick="window.tourApp.switchDayTab(2)" class="px-5 py-2.5 rounded-xl font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition cursor-pointer">
+          Day 2 (Oct 17) • මාබල් බීච් & ආපසු ගමන
+        </button>
+      </div>
+    </div>
+
+    <!-- Cards Grid -->
+    <div id="itinerary-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Populated dynamically by app.js -->
+    </div>
+  </section>
+
+  <!-- MEAL STOPS & EXPENSE BUDGET TRACKER -->
+  <section id="expense-section" class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+    <div class="glass-panel rounded-3xl p-6 sm:p-8 border border-slate-800">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between pb-6 mb-6 border-b border-slate-800 gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-2">
+            <span>🍛 Dining & Budget Management</span>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white">ආහාර නැවතුම් සහ මුදල් වියදම් සටහන</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            උදෑසන, දවල් සහ රාත්‍රී ආහාර වියදම්, ටිකට් පත් හා ඉන්ධන වියදම් ගණනය කිරීම
+          </p>
+        </div>
+
+        <!-- Budget Summary Cards -->
+        <div class="flex flex-wrap items-center gap-4">
+          <div class="bg-slate-900/90 rounded-2xl px-5 py-3 border border-slate-800 shadow-md">
+            <span class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block">මුළු ඇස්තමේන්තුව (Total Budget)</span>
+            <span id="total-budget-lkr" class="text-xl sm:text-2xl font-black text-amber-400 block">Rs. 0</span>
+          </div>
+          <div class="bg-slate-900/90 rounded-2xl px-5 py-3 border border-slate-800 shadow-md">
+            <span class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block">කෙනෙකුට වියදම (Per Person)</span>
+            <span id="per-person-lkr" class="text-base sm:text-lg font-bold text-emerald-400 block">Rs. 0</span>
+          </div>
+          <div class="bg-slate-900/90 rounded-2xl px-4 py-2 border border-slate-800">
+            <label class="text-[11px] text-slate-400 font-semibold block mb-1">පවුලේ සාමාජිකයින් ගණන:</label>
+            <input type="number" id="family-member-count" min="1" max="25" value="5" class="glass-input w-20 px-2 py-1 rounded-lg text-center font-bold text-sm" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Expense Form & List Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Add Meal/Expense Form -->
+        <div class="glass-card rounded-2xl p-5 border border-slate-800">
+          <h3 class="font-bold text-sm text-white mb-3 flex items-center gap-2">
+            <span>➕ නව ආහාර/වියදමක් එකතු කරන්න</span>
+          </h3>
+          <form id="form-add-expense" class="space-y-3">
+            <div>
+              <label class="text-[11px] text-slate-400 font-medium block mb-1">වියදමේ විස්තරය (Item Description)</label>
+              <input type="text" id="expense-name" placeholder="e.g. Seafood Dinner at Uppuveli" required class="glass-input w-full px-3 py-2 rounded-xl text-xs" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5">
+              <div>
+                <label class="text-[11px] text-slate-400 font-medium block mb-1">වර්ගය (Category)</label>
+                <select id="expense-category" class="glass-input w-full px-2.5 py-2 rounded-xl text-xs bg-slate-900">
+                  <option value="Breakfast">🍳 Breakfast</option>
+                  <option value="Lunch">🍛 Lunch</option>
+                  <option value="Dinner">🦞 Dinner</option>
+                  <option value="Snack">🥥 Coconut / Snack</option>
+                  <option value="Tickets">🎟️ Entry Tickets</option>
+                  <option value="Transit">⛽ Fuel / Toll</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-400 font-medium block mb-1">දිනය (Tour Day)</label>
+                <select id="expense-day" class="glass-input w-full px-2.5 py-2 rounded-xl text-xs bg-slate-900">
+                  <option value="1">Day 1 (Oct 16)</option>
+                  <option value="2">Day 2 (Oct 17)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] text-slate-400 font-medium block mb-1">මුදල (Estimated Cost in LKR)</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2 text-xs font-bold text-slate-500">Rs.</span>
+                <input type="number" id="expense-cost" placeholder="4500" required min="1" class="glass-input w-full pl-9 pr-3 py-2 rounded-xl text-xs font-bold text-amber-300" />
+              </div>
+            </div>
+
+            <button type="submit" class="w-full py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition shadow-lg shadow-amber-500/20 cursor-pointer">
+              ලැයිස්තුවට එක් කරන්න (Add Expense)
+            </button>
+          </form>
+        </div>
+
+        <!-- Expense List -->
+        <div class="lg:col-span-2 glass-card rounded-2xl p-5 border border-slate-800">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+            <h4 class="font-bold text-sm text-white">වත්මන් වියදම් ලැයිස්තුව (Logged Expenses)</h4>
+            <span class="text-[11px] text-slate-400">Real-time Budgeting</span>
+          </div>
+
+          <div id="expense-list" class="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+            <!-- Populated dynamically by app.js -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PACKING CHECKLIST & EMERGENCY CONTACTS -->
+  <section id="checklist-section" class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      <!-- Interactive Checklist -->
+      <div class="glass-card rounded-3xl p-6 border border-slate-800">
+        <div class="flex items-center gap-2.5 mb-4">
+          <span class="text-xl">🎒</span>
+          <div>
+            <h3 class="font-bold text-base text-white">පවුලේ අවශ්‍යතා සහ බඩු ලැයිස්තුව (Packing Checklist)</h3>
+            <p class="text-xs text-slate-400">Important essentials for temples and beaches</p>
+          </div>
+        </div>
+
+        <div class="space-y-2.5 text-xs text-slate-300">
+          <label class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:bg-slate-800/50 transition">
+            <input type="checkbox" checked class="w-4 h-4 rounded text-sky-500 bg-slate-800 border-slate-700" />
+            <span>අනුරාධපුර පූජා භූමිය සඳහා සුදු ඇඳුම් (White temple attire)</span>
+          </label>
+          <label class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:bg-slate-800/50 transition">
+            <input type="checkbox" checked class="w-4 h-4 rounded text-sky-500 bg-slate-800 border-slate-700" />
+            <span>කන්නියා සහ මාබල් බීච් සඳහා අමතර ඇඳුම් හා තුවා (Extra swimwear & towels)</span>
+          </label>
+          <label class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:bg-slate-800/50 transition">
+            <input type="checkbox" checked class="w-4 h-4 rounded text-sky-500 bg-slate-800 border-slate-700" />
+            <span>Sunscreen, අව් කණ්නාඩි සහ තොප්පි (Sunscreen & UV sunglasses)</span>
+          </label>
+          <label class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:bg-slate-800/50 transition">
+            <input type="checkbox" class="w-4 h-4 rounded text-sky-500 bg-slate-800 border-slate-700" />
+            <span>ප්‍රථමාධාර සහ වමනය/හිසරද පෙති (First aid & motion sickness meds)</span>
+          </label>
+          <label class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:bg-slate-800/50 transition">
+            <input type="checkbox" checked class="w-4 h-4 rounded text-sky-500 bg-slate-800 border-slate-700" />
+            <span>වාහනයේ අමතර රෝදය (Spare tire) සහ කට්ටලය පරීක්ෂා කිරීම</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Emergency Sri Lanka Hotlines -->
+      <div class="glass-card rounded-3xl p-6 border border-slate-800 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2.5 mb-4">
+            <span class="text-xl">🚨</span>
+            <div>
+              <h3 class="font-bold text-base text-white">හදිසි ඇමතුම් සහ සහන සේවා (Emergency Contacts)</h3>
+              <p class="text-xs text-slate-400">Quick assistance during the journey</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="p-3 rounded-2xl bg-slate-900/80 border border-slate-800">
+              <span class="text-[10px] text-slate-400 uppercase font-bold block">සුවසැරිය ගිලන්රථ සේවය</span>
+              <a href="tel:1990" class="text-base font-black text-rose-400 hover:underline">☎ 1990</a>
+              <span class="text-[11px] text-slate-400 block mt-0.5">Free 24/7 Ambulance</span>
+            </div>
+            <div class="p-3 rounded-2xl bg-slate-900/80 border border-slate-800">
+              <span class="text-[10px] text-slate-400 uppercase font-bold block">පොලිස් හදිසි ඇමතුම්</span>
+              <a href="tel:119" class="text-base font-black text-sky-400 hover:underline">☎ 119</a>
+              <span class="text-[11px] text-slate-400 block mt-0.5">Police Emergency</span>
+            </div>
+            <div class="p-3 rounded-2xl bg-slate-900/80 border border-slate-800">
+              <span class="text-[10px] text-slate-400 uppercase font-bold block">සංචාරක සහන සේවය</span>
+              <a href="tel:1912" class="text-base font-black text-amber-400 hover:underline">☎ 1912</a>
+              <span class="text-[11px] text-slate-400 block mt-0.5">SL Tourist Hotline</span>
+            </div>
+            <div class="p-3 rounded-2xl bg-slate-900/80 border border-slate-800">
+              <span class="text-[10px] text-slate-400 uppercase font-bold block">ත්‍රිකුණාමල රෝහල</span>
+              <span class="text-sm font-bold text-slate-200 block">026 222 2261</span>
+              <span class="text-[11px] text-slate-400 block mt-0.5">DGH Trincomalee</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+          <span>Safe travels with loved ones ❤️</span>
+          <span class="text-emerald-400">නාවගත්තේගම ➔ ත්‍රිකුණාමලය</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- PROXIMITY ALERT MODAL -->
+  <div id="proximity-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden transition-all">
+    <div class="glass-panel rounded-3xl max-w-md w-full border border-sky-500/40 shadow-2xl overflow-hidden animate-float">
+      <div class="relative h-48 w-full">
+        <img id="modal-alert-image" src="" alt="Alert Location" class="w-full h-full object-cover" />
+        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
+        <div class="absolute top-3 right-3">
+          <button onclick="window.tourApp.closeModal()" class="w-8 h-8 rounded-full bg-slate-900/80 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition cursor-pointer">
+            ✕
+          </button>
+        </div>
+        <div class="absolute bottom-3 left-4 right-4">
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-amber-500 text-slate-950 mb-1">
+            <span>📍 Proximity Triggered</span>
+          </div>
+          <h3 id="modal-alert-title" class="text-lg font-bold text-white leading-tight"></h3>
+          <p id="modal-alert-sin" class="text-xs text-amber-300 font-medium"></p>
+        </div>
+      </div>
+
+      <div class="p-6">
+        <div class="p-3.5 rounded-2xl bg-sky-950/50 border border-sky-500/30 mb-4">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-sky-400 block mb-1">ස්ථානීය උපදෙස් (Smart Alert):</span>
+          <p id="modal-alert-message" class="text-xs text-slate-200 leading-relaxed font-medium"></p>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 mb-5 flex items-center gap-2">
+          <span class="text-base">🚗</span>
+          <span id="modal-alert-distance" class="font-semibold text-amber-300"></span>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button onclick="window.tourApp.triggerConfetti(); window.tourApp.closeModal();" class="flex-1 py-2.5 rounded-xl font-bold text-xs bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white shadow-lg shadow-sky-600/30 transition cursor-pointer">
+            අවබෝධ විය (Acknowledge)
+          </button>
+          <button onclick="window.tourApp.closeModal()" class="px-4 py-2.5 rounded-xl font-semibold text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD CUSTOM STOP MODAL -->
+  <div id="add-stop-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden transition-all">
+    <div class="glass-panel rounded-3xl max-w-lg w-full border border-emerald-500/30 shadow-2xl p-6">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+        <div>
+          <h3 class="text-base sm:text-lg font-bold text-white">නව ගමන් නැවතුමක් එකතු කරන්න</h3>
+          <p class="text-xs text-slate-400">Add custom stop with coordinates and reminders</p>
+        </div>
+        <button id="btn-close-add-stop" class="text-slate-400 hover:text-white transition cursor-pointer">✕</button>
+      </div>
+
+      <form id="form-add-stop" class="space-y-3.5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] text-slate-400 font-semibold block mb-1">නැවතුමේ නම (English)</label>
+            <input type="text" id="stop-name" placeholder="e.g. Habarana Elephant Spot" required class="glass-input w-full px-3 py-2 rounded-xl text-xs" />
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-400 font-semibold block mb-1">නම (සිංහලෙන්)</label>
+            <input type="text" id="stop-sin-name" placeholder="හබරණ අලි නැරඹුම් ස්ථානය" class="glass-input w-full px-3 py-2 rounded-xl text-xs" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] text-slate-400 font-semibold block mb-1">Latitude</label>
+            <input type="number" step="any" id="stop-lat" placeholder="8.0362" required class="glass-input w-full px-3 py-2 rounded-xl text-xs" />
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-400 font-semibold block mb-1">Longitude</label>
+            <input type="number" step="any" id="stop-lng" placeholder="80.7533" required class="glass-input w-full px-3 py-2 rounded-xl text-xs" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="text-[11px] text-slate-400 font-semibold block mb-1">වේලාව (Time)</label>
+            <input type="text" id="stop-time" placeholder="11:30 AM" class="glass-input w-full px-3 py-2 rounded-xl text-xs" />
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-400 font-semibold block mb-1">දිනය (Day)</label>
+            <select id="stop-day" class="glass-input w-full px-2 py-2 rounded-xl text-xs bg-slate-900">
+              <option value="1">Day 1 (Oct 16)</option>
+              <option value="2">Day 2 (Oct 17)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-400 font-semibold block mb-1">කාණ්ඩය (Type)</label>
+            <select id="stop-category" class="glass-input w-full px-2 py-2 rounded-xl text-xs bg-slate-900">
+              <option value="Sightseeing">Sightseeing</option>
+              <option value="Beach">Beach / Relax</option>
+              <option value="Heritage">Temple / Heritage</option>
+              <option value="Food">Food / Snack Stop</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400 font-semibold block mb-1">ඡායාරූප Image URL (Optional)</label>
+          <input type="text" id="stop-image" placeholder="assets/images/... හෝ URL" class="glass-input w-full px-3 py-2 rounded-xl text-xs" />
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400 font-semibold block mb-1">විස්තරය (Short Description)</label>
+          <textarea id="stop-desc" rows="2" placeholder="Brief note about this stop..." class="glass-input w-full px-3 py-2 rounded-xl text-xs"></textarea>
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400 font-semibold block mb-1">ස්ථානීය අනතුරු ඇඟවීම (Proximity Reminder in Sinhala)</label>
+          <input type="text" id="stop-reminder" placeholder="e.g. වාහනයෙන් බසින විට පරෙස්සම් වන්න, වතුර බෝතල් රැගෙන යන්න." class="glass-input w-full px-3 py-2 rounded-xl text-xs" />
+        </div>
+
+        <div class="flex items-center gap-3 pt-2">
+          <button type="submit" class="flex-1 py-2.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-lg shadow-emerald-600/30 cursor-pointer">
+            නැවතුම එකතු කරන්න (Save Stop)
+          </button>
+          <button type="button" onclick="document.getElementById('add-stop-modal').classList.add('hidden')" class="px-4 py-2.5 rounded-xl font-semibold text-xs bg-slate-800 text-slate-300 hover:bg-slate-700 transition cursor-pointer">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="mt-20 border-t border-slate-800/80 pt-8 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="text-base">🇱🇰</span>
+        <span class="font-semibold text-slate-400">ශ්‍රී ලංකා පවුලේ චාරිකාව 2026 • නාවගත්තේගම ➔ අනුරාධපුරය ➔ ත්‍රිකුණාමලය</span>
+      </div>
+      <div>
+        <span>Built with HTML5, Tailwind CSS, Leaflet.js & Vanilla JavaScript</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Logic -->
+  <script src="app.js?v=2.1"></script>
+</body>
+</html>
