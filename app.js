@@ -269,17 +269,35 @@ const DEFAULT_LOCATIONS = [
   }
 ];
 
-// Default Expenses
-const DEFAULT_EXPENSES = [
-  { id: 'exp-1', name: 'උදෑසන ආහාරය (Breakfast) - අනුරාධපුරය', category: 'Breakfast', day: 1, cost: 4500 },
-  { id: 'exp-2', name: 'දිවා ආහාරය (Lunch) - ත්‍රිකුණාමලය හෝටලය', category: 'Lunch', day: 1, cost: 7000 },
-  { id: 'exp-3', name: 'තැඹිලි සහ සවස කෙටි ආහාර', category: 'Snack', day: 1, cost: 2000 },
-  { id: 'exp-4', name: 'රාත්‍රී ආහාරය (Dinner) - ත්‍රිකුණාමලය', category: 'Dinner', day: 1, cost: 8500 },
-  { id: 'exp-5', name: 'හෝටලයෙන් උදෑසන ආහාරය (Day 2 Breakfast)', category: 'Breakfast', day: 2, cost: 5000 },
-  { id: 'exp-6', name: 'මාබල් බීච් ප්‍රවේශ පත්‍ර සහ කන්නියා ප්‍රවේශය', category: 'Tickets', day: 2, cost: 2500 },
-  { id: 'exp-7', name: 'දිවා ආහාරය (Day 2 Lunch) - ත්‍රිකුණාමලය/මගදී', category: 'Lunch', day: 2, cost: 7500 },
-  { id: 'exp-8', name: 'ඉන්ධන (Fuel Reserve) - සම්පූර්ණ ගමනට', category: 'Transit', day: 1, cost: 16000 }
-];
+// Firebase Configuration provided by user
+const firebaseConfig = {
+  apiKey: "AIzaSyDlnWSIKbIWPhnZfQpsLFQ9YOvTlgoVOAs",
+  authDomain: "trincomalee-390ce.firebaseapp.com",
+  projectId: "trincomalee-390ce",
+  storageBucket: "trincomalee-390ce.firebasestorage.app",
+  messagingSenderId: "86500162681",
+  appId: "1:86500162681:web:c9e3685df0f53c567b28a8",
+  measurementId: "G-39DD81G332"
+};
+
+let db = null;
+let isFirebaseInitialized = false;
+
+try {
+  if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    db = firebase.firestore();
+    isFirebaseInitialized = true;
+    console.log("🔥 Firebase Firestore initialized successfully!");
+  }
+} catch (e) {
+  console.warn("Firebase initialization notice:", e);
+}
+
+// Default Expenses: Initially EMPTY (Rs. 0) as requested by user
+const DEFAULT_EXPENSES = [];
 
 // State Management
 class TourApp {
@@ -293,7 +311,8 @@ class TourApp {
       this.locations = stored;
     }
 
-    this.expenses = this.loadFromStorage('tour_expenses_v2', DEFAULT_EXPENSES);
+    // Default to empty array (Rs. 0) so user can add custom expenses
+    this.expenses = this.loadFromStorage('tour_expenses_v3', DEFAULT_EXPENSES);
     this.familyCount = parseInt(localStorage.getItem('tour_family_count') || '5', 10);
     this.activeDayTab = 1;
     this.map = null;
@@ -329,6 +348,46 @@ class TourApp {
     this.renderExpenses();
     this.renderLocationTable();
     this.setupEventListeners();
+    this.initFirebaseSync();
+  }
+
+  // --- Real-time Firebase Firestore Sync ---
+  initFirebaseSync() {
+    const badge = document.getElementById('firebase-sync-badge');
+    if (!db) {
+      if (badge) {
+        badge.innerHTML = '<span>💾 LocalStorage Mode</span>';
+        badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+      }
+      return;
+    }
+
+    try {
+      db.collection('expenses')
+        .orderBy('createdAt', 'desc')
+        .onSnapshot((snapshot) => {
+          const cloudExpenses = [];
+          snapshot.forEach((doc) => {
+            cloudExpenses.push({ id: doc.id, ...doc.data() });
+          });
+          this.expenses = cloudExpenses;
+          this.saveToStorage('tour_expenses_v3', this.expenses);
+          this.renderExpenses();
+
+          if (badge) {
+            badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span>☁️ Firebase Live Synced</span>';
+            badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+          }
+        }, (error) => {
+          console.warn("Firestore onSnapshot error (security rules or offline):", error);
+          if (badge) {
+            badge.innerHTML = '<span>💾 LocalStorage Mode</span>';
+            badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+          }
+        });
+    } catch (e) {
+      console.warn("Error setting up Firestore listener:", e);
+    }
   }
 
   // --- Detailed Schedule (User's Exact Timeline) ---
@@ -770,19 +829,45 @@ class TourApp {
     }).join('');
   }
 
-  // --- Expenses & Meal Tracker ---
-  addExpense(item) {
-    this.expenses.push(item);
-    this.saveToStorage('tour_expenses_v2', this.expenses);
+  // --- Expenses & Meal Tracker (Firebase + Local Fallback) ---
+  async addExpense(item) {
+    item.createdAt = Date.now();
+
+    if (db && isFirebaseInitialized) {
+      try {
+        await db.collection('expenses').add(item);
+        this.showToast(`☁️ "${item.name}" Firebase වෙත සුරක්ෂිතව එක් විය!`, 'success');
+        return;
+      } catch (err) {
+        console.warn("Firestore write error, falling back to LocalStorage:", err);
+      }
+    }
+
+    // Local fallback
+    item.id = 'exp-' + Date.now();
+    this.expenses.unshift(item);
+    this.saveToStorage('tour_expenses_v3', this.expenses);
     this.renderExpenses();
-    this.showToast(`🍲 "${item.name}" වියදම් ලැයිස්තුවට එක් කරන ලදී!`, 'success');
+    this.showToast(`💾 "${item.name}" LocalStorage හි සුරැකිණි!`, 'info');
   }
 
-  deleteExpense(id) {
-    this.expenses = this.expenses.filter(e => e.id !== id);
-    this.saveToStorage('tour_expenses_v2', this.expenses);
-    this.renderExpenses();
-    this.showToast('🗑️ වියදම ඉවත් කරන ලදී', 'info');
+  async deleteExpense(id) {
+    if (confirm('මෙම වියදම ඉවත් කිරීමට අවශ්‍ය බව තහවුරු කරන්නද?')) {
+      if (db && isFirebaseInitialized && !id.startsWith('exp-')) {
+        try {
+          await db.collection('expenses').doc(id).delete();
+          this.showToast('🗑️ Firebase වෙතින් වියදම ඉවත් කරන ලදී', 'info');
+          return;
+        } catch (err) {
+          console.warn("Firestore delete error, falling back to LocalStorage:", err);
+        }
+      }
+
+      this.expenses = this.expenses.filter(e => e.id !== id);
+      this.saveToStorage('tour_expenses_v3', this.expenses);
+      this.renderExpenses();
+      this.showToast('🗑️ වියදම ඉවත් කරන ලදී', 'info');
+    }
   }
 
   updateFamilyCount(count) {
@@ -808,7 +893,13 @@ class TourApp {
     if (!listEl) return;
 
     if (this.expenses.length === 0) {
-      listEl.innerHTML = '<p class="text-sm text-slate-500 py-4 text-center">වියදම් සටහන් කර නොමැත.</p>';
+      listEl.innerHTML = `
+        <div class="py-8 px-4 text-center glass-card rounded-2xl border border-dashed border-slate-800">
+          <span class="text-3xl block mb-2">💸</span>
+          <p class="text-xs sm:text-sm font-semibold text-slate-300">වියදම් කිසිවක් සටහන් කර නොමැත (Default: Rs. 0)</p>
+          <p class="text-[11px] text-slate-500 mt-1 max-w-md mx-auto">ඔබට අවශ්‍ය ආහාර හා ගමන් වියදම් වම්පස ඇති Form එකෙන් ඇතුළත් කරන්න. ඒවා Firebase Cloud හි සජීවීව සුරැකෙනු ඇත.</p>
+        </div>
+      `;
       return;
     }
 
@@ -834,7 +925,7 @@ class TourApp {
         </div>
         <div class="flex items-center gap-3">
           <span class="text-xs sm:text-sm font-bold text-amber-400">Rs. ${(Number(e.cost) || 0).toLocaleString('en-US')}</span>
-          <button onclick="window.tourApp.deleteExpense('${e.id}')" class="text-slate-500 hover:text-rose-400 transition" title="Delete">
+          <button onclick="window.tourApp.deleteExpense('${e.id}')" class="text-slate-500 hover:text-rose-400 transition cursor-pointer" title="Delete">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
